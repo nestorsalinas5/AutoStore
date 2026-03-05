@@ -15,13 +15,21 @@ def create_app():
     app = Flask(__name__)
 
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-prod')
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///autostore.db')
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-    # Fix postgres URL for Railway/Render (they use postgres:// but SQLAlchemy needs postgresql://)
-    uri = app.config['SQLALCHEMY_DATABASE_URI']
-    if uri and uri.startswith('postgres://'):
-        app.config['SQLALCHEMY_DATABASE_URI'] = uri.replace('postgres://', 'postgresql://', 1)
+    # Leer DATABASE_URL con múltiples fallbacks
+    db_url = (
+        os.environ.get('DATABASE_URL') or
+        os.environ.get('POSTGRES_URL') or
+        os.environ.get('POSTGRESQL_URL') or
+        'sqlite:///autostore.db'
+    )
+
+    # Railway/Render usan postgres:// pero SQLAlchemy necesita postgresql://
+    if db_url.startswith('postgres://'):
+        db_url = db_url.replace('postgres://', 'postgresql://', 1)
+
+    app.config['SQLALCHEMY_DATABASE_URI'] = db_url
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
     db.init_app(app)
     login_manager.init_app(app)
@@ -37,15 +45,13 @@ def create_app():
     def load_user(user_id):
         return User.query.get(int(user_id))
 
-    # Register blueprints
     from app.routes.auth import auth_bp
     from app.routes.dashboard import dashboard_bp
     from app.routes.inventory import inventory_bp
     from app.routes.invoices import invoices_bp
     from app.routes.suppliers import suppliers_bp
-    from app.routes.reports import reports_bp
+    from app.routes.reports import reports_bp, api_bp
     from app.routes.admin import admin_bp
-    from app.routes.reports import api_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
