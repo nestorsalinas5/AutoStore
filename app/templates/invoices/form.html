@@ -72,7 +72,6 @@
 {% endblock %}
 {% block scripts %}
 <script>
-const products = {{ products | tojson(default=str) }};
 const pMap = {};
 {% for p in products %}pMap[{{ p.id }}] = {{ p.price_sell }};{% endfor %}
 
