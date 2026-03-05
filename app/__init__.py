@@ -7,6 +7,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+import logging
+logging.basicConfig(level=logging.INFO)
+
 db = SQLAlchemy()
 login_manager = LoginManager()
 migrate = Migrate()
@@ -17,16 +20,20 @@ def create_app():
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-prod')
 
     # Leer DATABASE_URL con múltiples fallbacks
-    db_url = (
-        os.environ.get('DATABASE_URL') or
-        os.environ.get('POSTGRES_URL') or
-        os.environ.get('POSTGRESQL_URL') or
-        'sqlite:///autostore.db'
-    )
+   db_url = (
+    os.environ.get('DATABASE_URL') or
+    os.environ.get('POSTGRES_URL') or
+    os.environ.get('POSTGRESQL_URL') or
+    os.environ.get('PGDATABASE') or
+    'sqlite:///autostore.db'
+)
+print(f">>> USANDO DB: {db_url[:30]}...", flush=True)
 
     # Railway/Render usan postgres:// pero SQLAlchemy necesita postgresql://
     if db_url.startswith('postgres://'):
         db_url = db_url.replace('postgres://', 'postgresql://', 1)
+    import logging
+    logging.getLogger(__name__).info(f">>> DATABASE URL: {db_url}")
 
     app.config['SQLALCHEMY_DATABASE_URI'] = db_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
