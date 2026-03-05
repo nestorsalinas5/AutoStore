@@ -45,7 +45,7 @@ def create_app():
     from app.routes.suppliers import suppliers_bp
     from app.routes.reports import reports_bp
     from app.routes.admin import admin_bp
-    from app.routes.api import api_bp
+    from app.routes.reports import api_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
