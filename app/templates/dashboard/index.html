@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard — AutoStore{% endblock %}
+{% block page_title %}Dashboard General{% endblock %}
+
+{% block extra_css %}
+<style>
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;position:relative;overflow:hidden;transition:border-color .2s;animation:fadeIn .4s ease both}
+.kpi-card:hover{border-color:var(--muted2)}
+.kpi-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px}
+.kpi-green::after{background:var(--accent)}.kpi-blue::after{background:var(--accent2)}.kpi-orange::after{background:var(--accent3)}.kpi-yellow::after{background:var(--warn)}
+.kpi-label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;font-family:'DM Mono',monospace}
+.kpi-value{font-size:28px;font-weight:800;line-height:1;margin-bottom:8px}
+.kpi-green .kpi-value{color:var(--accent)}.kpi-blue .kpi-value{color:var(--accent2)}.kpi-orange .kpi-value{color:var(--accent3)}.kpi-yellow .kpi-value{color:var(--warn)}
+.kpi-sub{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace}
+.kpi-sub .up{color:var(--accent)}.kpi-sub .down{color:var(--accent3)}
+.kpi-icon{position:absolute;top:16px;right:18px;font-size:22px;opacity:.15}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.three-col{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:14px}
+.mini-chart{height:52px;display:flex;align-items:flex-end;gap:3px}
+.bar-col{flex:1;border-radius:3px 3px 0 0;background:rgba(0,229,160,.12);transition:background .2s;cursor:pointer}
+.bar-col:hover{background:rgba(0,229,160,.3)}.bar-col.highlight{background:var(--accent)}
+.chart-axis{display:flex;justify-content:space-between;margin-top:5px}
+.chart-axis span{font-size:9px;color:var(--muted);font-family:'DM Mono',monospace}
+.auto-item{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid rgba(30,42,50,.5)}
+.auto-item:last-child{border-bottom:none}
+.auto-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.auto-text{flex:1;font-size:11px;line-height:1.5}
+.auto-ts{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;white-space:nowrap}
+.order-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(30,42,50,.5)}
+.order-item:last-child{border-bottom:none}
+.order-icon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.order-info{flex:1}
+.order-name{font-size:12px;font-weight:600;margin-bottom:2px}
+.order-meta{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace}
+.order-amount{font-size:13px;font-weight:700;font-family:'DM Mono',monospace}
+.inv-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(30,42,50,.5)}
+.inv-row:last-child{border-bottom:none}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.empty-state{text-align:center;padding:30px;color:var(--muted);font-size:13px}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="section-label">Resumen del día</div>
+<div class="kpi-grid">
+  <div class="kpi-card kpi-green">
+    <div class="kpi-icon">💰</div>
+    <div class="kpi-label">Ventas hoy</div>
+    <div class="kpi-value">₲ {{ "{:,.0f}".format(sales_today) }}</div>
+    <div class="kpi-sub">
+      {% if sales_pct >= 0 %}<span class="up">▲ +{{ sales_pct }}%</span>{% else %}<span class="down">▼ {{ sales_pct }}%</span>{% endif %} vs ayer
+    </div>
+  </div>
+  <div class="kpi-card kpi-blue">
+    <div class="kpi-icon">📦</div>
+    <div class="kpi-label">Productos activos</div>
+    <div class="kpi-value">{{ total_products }}</div>
+    <div class="kpi-sub"><span class="down">{{ critical_products|length }} críticos</span> en stock</div>
+  </div>
+  <div class="kpi-card kpi-orange">
+    <div class="kpi-icon">⚠️</div>
+    <div class="kpi-label">Stock crítico</div>
+    <div class="kpi-value">{{ critical_products|length }}</div>
+    <div class="kpi-sub">productos por reponer</div>
+  </div>
+  <div class="kpi-card kpi-yellow">
+    <div class="kpi-icon">🧾</div>
+    <div class="kpi-label">Facturas hoy</div>
+    <div class="kpi-value">{{ invoices_today }}</div>
+    <div class="kpi-sub">₲ {{ "{:,.0f}".format(pending_invoices_total) }} pendiente</div>
+  </div>
+</div>
+
+<div class="two-col">
+  <!-- Inventario crítico -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title"><div class="panel-icon ib">📦</div>Inventario — Stock actual</div>
+      <a href="{{ url_for('inventory.index') }}" class="btn btn-secondary btn-sm">Ver todo →</a>
+    </div>
+    <div class="panel-body" style="padding:0 20px">
+      {% if critical_products %}
+      <table class="data-table">
+        <thead><tr><th>Producto</th><th>Stock</th><th>Estado</th></tr></thead>
+        <tbody>
+        {% for p in critical_products[:6] %}
+        <tr>
+          <td style="font-weight:600">{{ p.name }}</td>
+          <td>
+            <div class="stock-bar-wrap">
+              <div class="stock-bar"><div class="stock-fill {% if p.stock_pct < 15 %}fill-red{% elif p.stock_pct < 30 %}fill-yellow{% else %}fill-green{% endif %}" style="width:{{ p.stock_pct }}%"></div></div>
+              <span class="stock-pct">{{ p.stock_pct }}%</span>
+            </div>
+          </td>
+          <td><span class="badge {% if p.stock_status == 'critical' or p.stock_status == 'empty' %}bo{% else %}by{% endif %}">{{ '● Crítico' if p.stock_status in ('critical','empty') else '● Bajo' }}</span></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">✅ Todo el inventario está en orden</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Auto actions -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title"><div class="panel-icon ig">⚡</div>Acciones automáticas</div>
+      <span class="badge bg">{{ auto_actions|length }} recientes</span>
+    </div>
+    <div class="panel-body">
+      {% for a in auto_actions %}
+      <div class="auto-item">
+        <div class="auto-dot" style="background:{% if a.status=='ok' %}var(--accent){% elif a.status=='warning' %}var(--warn){% else %}var(--accent3){% endif %}"></div>
+        <div class="auto-text">{{ a.description }}</div>
+        <div class="auto-ts">{{ a.created_at.strftime('%H:%M') }}</div>
+      </div>
+      {% else %}
+      <div class="empty-state">Sin acciones recientes</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="three-col">
+  <!-- Ventas chart -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title"><div class="panel-icon ig">📈</div>Ventas — últimos 7 días</div>
+    </div>
+    <div class="panel-body">
+      <div style="margin-bottom:14px">
+        <div style="font-size:22px;font-weight:800;color:var(--accent)">₲ {{ "{:,.0f}".format(sales_week) }}</div>
+        <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">esta semana</div>
+      </div>
+      <div class="mini-chart" id="salesChart"></div>
+      <div class="chart-axis">
+        {% for d in weekly_data %}<span>{{ d.day }}</span>{% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Pedidos -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title"><div class="panel-icon io">🚚</div>Pedidos recientes</div>
+      <a href="{{ url_for('suppliers.orders') }}" class="btn btn-secondary btn-sm">Ver →</a>
+    </div>
+    <div class="panel-body" style="padding:8px 20px">
+      {% for o in recent_orders %}
+      <div class="order-item">
+        <div class="order-icon" style="background:rgba(0,229,160,.1)">📦</div>
+        <div class="order-info">
+          <div class="order-name">{{ o.supplier.name }}</div>
+          <div class="order-meta">{{ o.number }} · {% if o.auto_generated %}auto{% else %}manual{% endif %}</div>
+        </div>
+        <div>
+          <span class="badge {% if o.status=='received' %}bg{% elif o.status=='confirmed' %}bb{% elif o.status=='transit' %}bb{% else %}by{% endif %}">{{ o.status }}</span>
+          <div class="order-amount" style="text-align:right;margin-top:4px">₲ {{ "{:,.0f}".format(o.total) }}</div>
+        </div>
+      </div>
+      {% else %}
+      <div class="empty-state" style="padding:20px">Sin pedidos</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Facturas -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title"><div class="panel-icon iy">🧾</div>Facturas recientes</div>
+      <a href="{{ url_for('invoices.new') }}" class="btn btn-primary btn-sm">+ Nueva</a>
+    </div>
+    <div class="panel-body" style="padding:8px 20px">
+      {% for inv in recent_invoices %}
+      <div class="inv-row">
+        <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);width:65px">{{ inv.number }}</div>
+        <div style="flex:1;font-size:12px;font-weight:600">{{ inv.client.name }}</div>
+        <span class="badge {% if inv.status=='paid' %}bg{% elif inv.status=='sent' %}bb{% elif inv.status=='overdue' %}bo{% else %}by{% endif %}">{{ inv.status }}</span>
+      </div>
+      {% else %}
+      <div class="empty-state" style="padding:20px">Sin facturas</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const data = {{ weekly_data | tojson }};
+const max = Math.max(...data.map(d => d.total)) || 1;
+const chart = document.getElementById('salesChart');
+data.forEach((d, i) => {
+  const bar = document.createElement('div');
+  bar.className = 'bar-col' + (i === data.length - 1 ? ' highlight' : '');
+  bar.style.height = Math.max(4, (d.total / max * 100)) + '%';
+  bar.title = '₲ ' + d.total.toLocaleString();
+  chart.appendChild(bar);
+});
+</script>
+{% endblock %}

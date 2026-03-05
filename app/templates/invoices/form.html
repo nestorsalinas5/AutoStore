@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% block title %}Nueva Factura — AutoStore{% endblock %}
+{% block page_title %}Nueva Factura{% endblock %}
+{% block extra_css %}
+<style>
+.items-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px}
+.items-table th{padding:8px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-family:'DM Mono',monospace;border-bottom:1px solid var(--border)}
+.items-table td{padding:8px 6px}
+.item-row select,.item-row input{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--text);font-family:'Syne',sans-serif;outline:none;width:100%}
+.item-row select:focus,.item-row input:focus{border-color:var(--accent)}
+</style>
+{% endblock %}
+{% block content %}
+<div class="panel" style="max-width:800px">
+  <div class="panel-header">
+    <div class="panel-title"><div class="panel-icon iy">🧾</div>Crear nueva factura</div>
+    <a href="{{ url_for('invoices.index') }}" class="btn btn-secondary btn-sm">← Volver</a>
+  </div>
+  <div class="panel-body">
+    <form method="POST">
+      <div class="form-row form-row-2">
+        <div class="form-group">
+          <label class="form-label">Cliente *</label>
+          <select name="client_id" class="form-input" required>
+            <option value="">Seleccionar cliente...</option>
+            {% for c in clients %}
+            <option value="{{ c.id }}">{{ c.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Vencimiento (días)</label>
+          <input type="number" name="due_days" class="form-input" value="30" min="1">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Notas</label>
+        <input type="text" name="notes" class="form-input" placeholder="Observaciones opcionales">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Productos</label>
+        <table class="items-table">
+          <thead><tr><th>Producto</th><th>Cantidad</th><th>Precio unit.</th><th></th></tr></thead>
+          <tbody id="itemsBody">
+            <tr class="item-row">
+              <td>
+                <select name="product_id[]" onchange="fillPrice(this)">
+                  <option value="">Seleccionar...</option>
+                  {% for p in products %}
+                  <option value="{{ p.id }}" data-price="{{ p.price_sell }}">{{ p.name }} (₲{{ "{:,.0f}".format(p.price_sell) }})</option>
+                  {% endfor %}
+                </select>
+              </td>
+              <td><input type="number" name="quantity[]" value="1" min="1" style="width:80px"></td>
+              <td><input type="number" name="unit_price[]" value="0" min="0" step="100" style="width:120px"></td>
+              <td><button type="button" onclick="removeRow(this)" class="btn btn-danger btn-sm">✕</button></td>
+            </tr>
+          </tbody>
+        </table>
+        <button type="button" onclick="addRow()" class="btn btn-secondary btn-sm" style="margin-top:10px">+ Agregar producto</button>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:10px">
+        <button type="submit" class="btn btn-primary">Emitir factura</button>
+        <a href="{{ url_for('invoices.index') }}" class="btn btn-secondary">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const products = {{ products | tojson(default=str) }};
+const pMap = {};
+{% for p in products %}pMap[{{ p.id }}] = {{ p.price_sell }};{% endfor %}
+
+function fillPrice(sel) {
+  const row = sel.closest('tr');
+  const pid = parseInt(sel.value);
+  if (pMap[pid]) row.querySelector('[name="unit_price[]"]').value = pMap[pid];
+}
+
+function addRow() {
+  const tbody = document.getElementById('itemsBody');
+  const first = tbody.querySelector('tr');
+  const clone = first.cloneNode(true);
+  clone.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+  clone.querySelectorAll('input[type=number]').forEach(i => i.value = i.name.includes('quantity') ? 1 : 0);
+  tbody.appendChild(clone);
+}
+
+function removeRow(btn) {
+  const rows = document.querySelectorAll('#itemsBody tr');
+  if (rows.length > 1) btn.closest('tr').remove();
+}
+</script>
+{% endblock %}

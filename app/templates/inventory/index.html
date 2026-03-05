@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block title %}Inventario — AutoStore{% endblock %}
+{% block page_title %}Inventario{% endblock %}
+{% block content %}
+<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+  <form method="GET" style="display:flex;gap:8px;flex:1;min-width:200px">
+    <input type="text" name="q" value="{{ q }}" class="form-input" style="max-width:260px" placeholder="Buscar producto o código...">
+    <select name="category" class="form-input" style="max-width:160px">
+      <option value="">Todas las categorías</option>
+      {% for cat in categories %}
+      <option value="{{ cat.id }}" {% if request.args.get('category')==cat.id|string %}selected{% endif %}>{{ cat.name }}</option>
+      {% endfor %}
+    </select>
+    <select name="status" class="form-input" style="max-width:140px">
+      <option value="">Todos</option>
+      <option value="critical" {% if request.args.get('status')=='critical' %}selected{% endif %}>Crítico</option>
+      <option value="low" {% if request.args.get('status')=='low' %}selected{% endif %}>Bajo</option>
+    </select>
+    <button type="submit" class="btn btn-secondary">Buscar</button>
+  </form>
+  {% if current_user.is_manager %}
+  <a href="{{ url_for('inventory.new') }}" class="btn btn-primary">+ Nuevo producto</a>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <div class="panel-header">
+    <div class="panel-title"><div class="panel-icon ib">📦</div>Productos ({{ products|length }})</div>
+  </div>
+  <div class="panel-body" style="padding:0 20px">
+    <table class="data-table">
+      <thead>
+        <tr><th>Código</th><th>Producto</th><th>Categoría</th><th>Precio venta</th><th>Margen</th><th>Stock</th><th>Estado</th>{% if current_user.is_manager %}<th>Acciones</th>{% endif %}</tr>
+      </thead>
+      <tbody>
+      {% for p in products %}
+      <tr>
+        <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)">{{ p.code }}</td>
+        <td style="font-weight:600">{{ p.name }}</td>
+        <td style="color:var(--muted);font-size:11px">{{ p.category.name if p.category else '—' }}</td>
+        <td style="font-family:'DM Mono',monospace">₲ {{ "{:,.0f}".format(p.price_sell) }}</td>
+        <td style="font-family:'DM Mono',monospace;color:{% if p.margin_pct > 30 %}var(--accent){% elif p.margin_pct > 15 %}var(--warn){% else %}var(--accent3){% endif %}">{{ p.margin_pct }}%</td>
+        <td>
+          <div class="stock-bar-wrap">
+            <div class="stock-bar"><div class="stock-fill {% if p.stock_pct < 15 %}fill-red{% elif p.stock_pct < 35 %}fill-yellow{% else %}fill-green{% endif %}" style="width:{{ p.stock_pct }}%"></div></div>
+            <span class="stock-pct">{{ p.stock }}</span>
+          </div>
+        </td>
+        <td>
+          <span class="badge {% if p.stock_status in ('critical','empty') %}bo{% elif p.stock_status == 'low' %}by{% else %}bg{% endif %}">
+            {% if p.stock_status == 'ok' %}● OK{% elif p.stock_status == 'low' %}● Bajo{% else %}● Crítico{% endif %}
+          </span>
+        </td>
+        {% if current_user.is_manager %}
+        <td>
+          <a href="{{ url_for('inventory.edit', id=p.id) }}" class="btn btn-secondary btn-sm">Editar</a>
+          {% if current_user.is_admin %}
+          <form method="POST" action="{{ url_for('inventory.delete', id=p.id) }}" style="display:inline" onsubmit="return confirm('¿Desactivar este producto?')">
+            <button type="submit" class="btn btn-danger btn-sm">✕</button>
+          </form>
+          {% endif %}
+        </td>
+        {% endif %}
+      </tr>
+      {% else %}
+      <tr><td colspan="8" style="text-align:center;padding:30px;color:var(--muted)">Sin productos encontrados</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

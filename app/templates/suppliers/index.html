@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block title %}Proveedores — AutoStore{% endblock %}
+{% block page_title %}Proveedores{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:flex-end;gap:10px">
+  {% if current_user.is_manager %}
+  <button onclick="document.getElementById('newSupplierModal').style.display='flex'" class="btn btn-primary">+ Nuevo proveedor</button>
+  {% endif %}
+</div>
+<div class="panel">
+  <div class="panel-header">
+    <div class="panel-title"><div class="panel-icon io">🏭</div>Proveedores activos</div>
+  </div>
+  <div class="panel-body" style="padding:0 20px">
+    <table class="data-table">
+      <thead><tr><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Pedidos</th></tr></thead>
+      <tbody>
+      {% for s in suppliers %}
+      <tr>
+        <td style="font-weight:600">{{ s.name }}</td>
+        <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)">{{ s.email or '—' }}</td>
+        <td style="font-size:11px;color:var(--muted)">{{ s.phone or '—' }}</td>
+        <td><span class="badge bb">{{ s.purchase_orders|length }} órdenes</span></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" style="text-align:center;padding:30px;color:var(--muted)">Sin proveedores. Agregá uno para empezar.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal nuevo proveedor -->
+<div id="newSupplierModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:999;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;width:100%;max-width:440px">
+    <h3 style="margin-bottom:20px;font-size:15px">Nuevo Proveedor</h3>
+    <form method="POST" action="{{ url_for('suppliers.new') }}">
+      <div class="form-group"><label class="form-label">Nombre *</label><input type="text" name="name" class="form-input" required></div>
+      <div class="form-group"><label class="form-label">Email</label><input type="email" name="email" class="form-input"></div>
+      <div class="form-group"><label class="form-label">Teléfono</label><input type="text" name="phone" class="form-input"></div>
+      <div class="form-group"><label class="form-label">Dirección</label><input type="text" name="address" class="form-input"></div>
+      <div style="display:flex;gap:10px;margin-top:8px">
+        <button type="submit" class="btn btn-primary">Guardar</button>
+        <button type="button" onclick="document.getElementById('newSupplierModal').style.display='none'" class="btn btn-secondary">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

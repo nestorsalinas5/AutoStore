@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% block title %}Reportes — AutoStore{% endblock %}
+{% block page_title %}Reportes y Analíticas{% endblock %}
+{% block extra_css %}
+<style>
+.report-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.big-chart{height:100px;display:flex;align-items:flex-end;gap:2px}
+.bc{flex:1;border-radius:2px 2px 0 0;background:rgba(0,229,160,.12);transition:background .15s;cursor:pointer;min-width:2px}
+.bc:hover{background:rgba(0,229,160,.3)}
+.stat-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(30,42,50,.5)}
+.stat-row:last-child{border-bottom:none}
+</style>
+{% endblock %}
+{% block content %}
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:4px">
+  <div class="panel" style="padding:18px 20px">
+    <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:8px">INGRESOS TOTALES</div>
+    <div style="font-size:26px;font-weight:800;color:var(--accent)">₲ {{ "{:,.0f}".format(total_revenue) }}</div>
+    <div style="font-size:11px;color:var(--muted)">facturas emitidas y cobradas</div>
+  </div>
+  <div class="panel" style="padding:18px 20px">
+    <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:8px">PENDIENTE DE COBRO</div>
+    <div style="font-size:26px;font-weight:800;color:var(--warn)">₲ {{ "{:,.0f}".format(total_pending) }}</div>
+    <div style="font-size:11px;color:var(--muted)">en facturas pendientes</div>
+  </div>
+  <div class="panel" style="padding:18px 20px">
+    <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:8px">PRODUCTOS BAJO STOCK</div>
+    <div style="font-size:26px;font-weight:800;color:var(--accent3)">{{ low_stock|length }}</div>
+    <div style="font-size:11px;color:var(--muted)">requieren reposición</div>
+  </div>
+</div>
+
+<div class="report-grid">
+  <!-- Ventas 30 días -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title"><div class="panel-icon ig">📈</div>Ventas últimos 30 días</div>
+    </div>
+    <div class="panel-body">
+      <div class="big-chart" id="chart30"></div>
+      <div style="display:flex;justify-content:space-between;margin-top:5px">
+        <span style="font-size:9px;color:var(--muted);font-family:'DM Mono',monospace">{{ sales_30[0].day if sales_30 else '' }}</span>
+        <span style="font-size:9px;color:var(--muted);font-family:'DM Mono',monospace">Hoy</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top productos -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title"><div class="panel-icon ig">🏆</div>Top productos por ingresos</div>
+    </div>
+    <div class="panel-body">
+      {% for p in top_products %}
+      <div class="stat-row">
+        <div style="font-size:12px;font-weight:600">{{ p.name }}</div>
+        <div style="text-align:right">
+          <div style="font-size:12px;font-weight:700;font-family:'DM Mono',monospace;color:var(--accent)">₲ {{ "{:,.0f}".format(p.revenue or 0) }}</div>
+          <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">{{ p.qty }} unidades</div>
+        </div>
+      </div>
+      {% else %}
+      <div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Sin datos de ventas aún</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Estado facturas -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title"><div class="panel-icon iy">🧾</div>Estado de facturas</div>
+    </div>
+    <div class="panel-body">
+      {% for status, count in status_counts %}
+      <div class="stat-row">
+        <span class="badge {% if status=='paid' %}bg{% elif status=='sent' %}bb{% elif status=='overdue' %}bo{% else %}by{% endif %}">{{ status }}</span>
+        <span style="font-size:18px;font-weight:800;font-family:'DM Mono',monospace">{{ count }}</span>
+      </div>
+      {% else %}
+      <div style="text-align:center;padding:20px;color:var(--muted)">Sin facturas</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Stock bajo -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title"><div class="panel-icon io">⚠️</div>Productos bajo stock mínimo</div>
+    </div>
+    <div class="panel-body" style="padding:0 20px">
+      <table class="data-table">
+        <thead><tr><th>Producto</th><th>Stock</th><th>Mínimo</th></tr></thead>
+        <tbody>
+        {% for p in low_stock[:8] %}
+        <tr>
+          <td style="font-weight:600;font-size:12px">{{ p.name }}</td>
+          <td style="font-family:'DM Mono',monospace;color:{% if p.stock <= p.stock_min %}var(--accent3){% else %}var(--warn){% endif %}">{{ p.stock }}</td>
+          <td style="font-family:'DM Mono',monospace;color:var(--muted)">{{ p.stock_min }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3" style="text-align:center;padding:20px;color:var(--muted)">✅ Todo en orden</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const s30 = {{ sales_30 | tojson }};
+const mx = Math.max(...s30.map(d=>d.total)) || 1;
+const c = document.getElementById('chart30');
+s30.forEach(d => {
+  const b = document.createElement('div');
+  b.className = 'bc';
+  b.style.height = Math.max(2, (d.total/mx*100)) + '%';
+  b.title = d.day + ': ₲' + d.total.toLocaleString();
+  c.appendChild(b);
+});
+</script>
+{% endblock %}

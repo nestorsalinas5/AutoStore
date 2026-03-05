@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block title %}{% if product %}Editar{% else %}Nuevo{% endif %} Producto — AutoStore{% endblock %}
+{% block page_title %}{% if product %}Editar Producto{% else %}Nuevo Producto{% endif %}{% endblock %}
+{% block content %}
+<div class="panel" style="max-width:700px">
+  <div class="panel-header">
+    <div class="panel-title"><div class="panel-icon ib">📦</div>{% if product %}Editar: {{ product.name }}{% else %}Agregar nuevo producto{% endif %}</div>
+    <a href="{{ url_for('inventory.index') }}" class="btn btn-secondary btn-sm">← Volver</a>
+  </div>
+  <div class="panel-body">
+    <form method="POST">
+      <div class="form-row form-row-2">
+        <div class="form-group">
+          <label class="form-label">Código *</label>
+          <input type="text" name="code" class="form-input" value="{{ product.code if product else '' }}" required placeholder="Ej: PROD-001">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nombre *</label>
+          <input type="text" name="name" class="form-input" value="{{ product.name if product else '' }}" required placeholder="Nombre del producto">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Descripción</label>
+        <input type="text" name="description" class="form-input" value="{{ product.description if product else '' }}" placeholder="Descripción opcional">
+      </div>
+      <div class="form-row form-row-3">
+        <div class="form-group">
+          <label class="form-label">Precio de compra (₲)</label>
+          <input type="number" name="price_buy" class="form-input" value="{{ product.price_buy if product else 0 }}" min="0" step="100">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Precio de venta (₲)</label>
+          <input type="number" name="price_sell" class="form-input" value="{{ product.price_sell if product else 0 }}" min="0" step="100">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Unidad</label>
+          <input type="text" name="unit" class="form-input" value="{{ product.unit if product else 'unidad' }}" placeholder="unidad, kg, caja...">
+        </div>
+      </div>
+      <div class="form-row form-row-3">
+        <div class="form-group">
+          <label class="form-label">Stock actual</label>
+          <input type="number" name="stock" class="form-input" value="{{ product.stock if product else 0 }}" min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Stock mínimo</label>
+          <input type="number" name="stock_min" class="form-input" value="{{ product.stock_min if product else 10 }}" min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Stock máximo</label>
+          <input type="number" name="stock_max" class="form-input" value="{{ product.stock_max if product else 100 }}" min="1">
+        </div>
+      </div>
+      <div class="form-row form-row-2">
+        <div class="form-group">
+          <label class="form-label">Categoría</label>
+          <select name="category_id" class="form-input">
+            <option value="">Sin categoría</option>
+            {% for cat in categories %}
+            <option value="{{ cat.id }}" {% if product and product.category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Proveedor</label>
+          <select name="supplier_id" class="form-input">
+            <option value="">Sin proveedor</option>
+            {% for s in suppliers %}
+            <option value="{{ s.id }}" {% if product and product.supplier_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:6px">
+        <button type="submit" class="btn btn-primary">{% if product %}Guardar cambios{% else %}Crear producto{% endif %}</button>
+        <a href="{{ url_for('inventory.index') }}" class="btn btn-secondary">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

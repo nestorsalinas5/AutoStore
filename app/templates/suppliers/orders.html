@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% block title %}Órdenes de Compra — AutoStore{% endblock %}
+{% block page_title %}Órdenes de Compra{% endblock %}
+{% block content %}
+<div style="display:flex;gap:10px;justify-content:flex-end">
+  <a href="{{ url_for('suppliers.index') }}" class="btn btn-secondary">Ver proveedores</a>
+  <button onclick="document.getElementById('newOrderModal').style.display='flex'" class="btn btn-primary">+ Nueva orden</button>
+</div>
+
+<div class="panel">
+  <div class="panel-header">
+    <div class="panel-title"><div class="panel-icon io">🚚</div>Órdenes de Compra</div>
+  </div>
+  <div class="panel-body" style="padding:0 20px">
+    <table class="data-table">
+      <thead><tr><th>Número</th><th>Proveedor</th><th>Total</th><th>Estado</th><th>Origen</th><th>Fecha</th><th>Acción</th></tr></thead>
+      <tbody>
+      {% for o in orders %}
+      <tr>
+        <td style="font-family:'DM Mono',monospace;font-weight:600">{{ o.number }}</td>
+        <td>{{ o.supplier.name }}</td>
+        <td style="font-family:'DM Mono',monospace;color:var(--accent)">₲ {{ "{:,.0f}".format(o.total) }}</td>
+        <td><span class="badge {% if o.status=='received' %}bg{% elif o.status in ('confirmed','transit') %}bb{% elif o.status=='cancelled' %}bo{% else %}by{% endif %}">{{ o.status }}</span></td>
+        <td><span class="badge {% if o.auto_generated %}bg{% else %}bb{% endif %}">{% if o.auto_generated %}AUTO{% else %}MANUAL{% endif %}</span></td>
+        <td style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">{{ o.created_at.strftime('%d/%m/%Y') }}</td>
+        <td>
+          {% if o.status not in ('received','cancelled') %}
+          <form method="POST" action="{{ url_for('suppliers.receive_order', id=o.id) }}" style="display:inline" onsubmit="return confirm('Marcar como recibida y actualizar stock?')">
+            <button type="submit" class="btn btn-primary btn-sm">✓ Recibida</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="text-align:center;padding:30px;color:var(--muted)">Sin órdenes de compra</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal nueva orden -->
+<div id="newOrderModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:999;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;width:100%;max-width:520px;max-height:80vh;overflow-y:auto">
+    <h3 style="margin-bottom:20px;font-size:15px">Nueva Orden de Compra</h3>
+    <form method="POST" action="{{ url_for('suppliers.new_order') }}">
+      <div class="form-group">
+        <label class="form-label">Proveedor *</label>
+        <select name="supplier_id" class="form-input" required>
+          <option value="">Seleccionar...</option>
+          {% for s in suppliers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div style="margin-bottom:12px">
+        <label class="form-label" style="display:block;margin-bottom:8px">Productos</label>
+        <table style="width:100%;border-collapse:collapse;font-size:12px" id="poItems">
+          <thead><tr>
+            <th style="text-align:left;padding:4px 6px;font-size:10px;color:var(--muted)">Producto</th>
+            <th style="text-align:left;padding:4px 6px;font-size:10px;color:var(--muted)">Cant.</th>
+            <th style="text-align:left;padding:4px 6px;font-size:10px;color:var(--muted)">Precio</th>
+            <th></th>
+          </tr></thead>
+          <tbody id="poBody">
+            <tr>
+              <td style="padding:4px 4px">
+                <select name="product_id[]" class="form-input">
+                  <option value="">Seleccionar...</option>
+                  {% for p in products %}<option value="{{ p.id }}" data-price="{{ p.price_buy }}">{{ p.name }}</option>{% endfor %}
+                </select>
+              </td>
+              <td style="padding:4px 4px"><input type="number" name="quantity[]" value="10" min="1" class="form-input" style="width:70px"></td>
+              <td style="padding:4px 4px"><input type="number" name="unit_price[]" value="0" min="0" class="form-input" style="width:100px"></td>
+              <td><button type="button" onclick="this.closest('tr').remove()" class="btn btn-danger btn-sm">✕</button></td>
+            </tr>
+          </tbody>
+        </table>
+        <button type="button" class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="addPoRow()">+ Agregar</button>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button type="submit" class="btn btn-primary">Crear orden</button>
+        <button type="button" onclick="document.getElementById('newOrderModal').style.display='none'" class="btn btn-secondary">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const pBuy = {};
+{% for p in products %}pBuy[{{ p.id }}] = {{ p.price_buy }};{% endfor %}
+function addPoRow() {
+  const tbody = document.getElementById('poBody');
+  const first = tbody.querySelector('tr').cloneNode(true);
+  first.querySelectorAll('select').forEach(s=>s.selectedIndex=0);
+  tbody.appendChild(first);
+}
+</script>
+{% endblock %}

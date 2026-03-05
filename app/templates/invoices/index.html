@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block title %}Facturación — AutoStore{% endblock %}
+{% block page_title %}Facturación{% endblock %}
+{% block content %}
+<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+  <form method="GET" style="display:flex;gap:8px;flex:1">
+    <input type="text" name="q" value="{{ q }}" class="form-input" style="max-width:240px" placeholder="Buscar factura o cliente...">
+    <select name="status" class="form-input" style="max-width:140px">
+      <option value="">Todos</option>
+      <option value="pending" {% if status=='pending' %}selected{% endif %}>Pendiente</option>
+      <option value="sent" {% if status=='sent' %}selected{% endif %}>Enviada</option>
+      <option value="paid" {% if status=='paid' %}selected{% endif %}>Cobrada</option>
+      <option value="overdue" {% if status=='overdue' %}selected{% endif %}>Vencida</option>
+    </select>
+    <button type="submit" class="btn btn-secondary">Filtrar</button>
+  </form>
+  <a href="{{ url_for('invoices.new') }}" class="btn btn-primary">+ Nueva factura</a>
+</div>
+
+<div class="panel">
+  <div class="panel-header">
+    <div class="panel-title"><div class="panel-icon iy">🧾</div>Facturas ({{ invoices|length }})</div>
+  </div>
+  <div class="panel-body" style="padding:0 20px">
+    <table class="data-table">
+      <thead><tr><th>Número</th><th>Cliente</th><th>Total</th><th>Estado</th><th>Fecha</th><th>Acciones</th></tr></thead>
+      <tbody>
+      {% for inv in invoices %}
+      <tr>
+        <td style="font-family:'DM Mono',monospace;font-weight:600">{{ inv.number }}</td>
+        <td>{{ inv.client.name }}</td>
+        <td style="font-family:'DM Mono',monospace;font-weight:700;color:var(--accent)">₲ {{ "{:,.0f}".format(inv.total) }}</td>
+        <td><span class="badge {% if inv.status=='paid' %}bg{% elif inv.status=='sent' %}bb{% elif inv.status=='overdue' %}bo{% else %}by{% endif %}">{{ inv.status }}</span></td>
+        <td style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">{{ inv.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+        <td>
+          <form method="POST" action="{{ url_for('invoices.update_status', id=inv.id) }}" style="display:inline">
+            {% if inv.status != 'paid' %}
+            <input type="hidden" name="status" value="paid">
+            <button type="submit" class="btn btn-secondary btn-sm">✓ Cobrada</button>
+            {% endif %}
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" style="text-align:center;padding:30px;color:var(--muted)">Sin facturas</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
