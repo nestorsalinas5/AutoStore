@@ -78,8 +78,3 @@ def seed():
 
 if __name__ == '__main__':
     app.run(debug=False)
-```
-
-Y en Railway **borrá el Pre-deploy Command** (dejalo vacío). El Start Command queda igual:
-```
-gunicorn run:app --bind 0.0.0.0:$PORT
